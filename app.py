@@ -1,88 +1,59 @@
-import openai
 import streamlit as st
-import os
+import openai
 from datetime import datetime
+import os
 
-# Set your OpenAI API key
-openai.api_key = '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'
+# ====== ─── SET YOUR ▼ OPENAI API KEY HERE ─── ===== #
+openai.api_key = "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"
 
-# Function to get response from OpenAI GPT model
-def get_chatgpt_response(query):
+# -------- Function to query GPT-5.2 (latest) -------- #
+def ask_gpt(query: str) -> str:
     try:
-        response = openai.Completion.create(
-            engine="gpt-3.5-turbo",
-            prompt=query,
-            max_tokens=300,
-            temperature=0.7
+        response = openai.ChatCompletion.create(
+            model="gpt-5.2-chat-latest",
+            messages=[
+                {"role": "system", "content": "You are a precise genomics & proteomics analysis assistant."},
+                {"role": "user", "content": query}
+            ],
+            max_tokens=500,
+            temperature=0.7,
         )
-        result = response.choices[0].text.strip()
-        return result
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        return f"Error occurred: {e}"
+        return f"⚠️ API Error: {str(e)}"
 
-# Create a dictionary to store previous results
-if 'previous_queries' not in st.session_state:
-    st.session_state.previous_queries = []
+# -------------- Streamlit UI -------------- #
+st.markdown(f"<style>{open('assets/custom.css').read()}</style>", unsafe_allow_html=True)
+st.markdown(f"<script>{open('assets/custom.js').read()}</script>", unsafe_allow_html=True)
 
-# Main page layout
-def main():
-    st.title("Functional Genomics & Proteomics AI Platform")
+st.title("🧬 Genomics & Proteomics AI Platform")
 
-    # Home Page with Introduction and Navigation
-    if st.sidebar.button("Home"):
-        st.markdown("""
-            # Welcome to the AI-Powered Functional Genomics & Proteomics Platform
-            This platform uses the latest **ChatGPT** AI technology to help you analyze complex genomics and proteomics data.
-            You can ask questions, and ChatGPT will provide accurate and insightful responses based on the latest scientific knowledge.
-        """)
+st.write("""
+Welcome! Ask a question about functional genomics or proteomics,
+and get **accurate, deep analytical answers** from ChatGPT’s latest model (GPT‑5.2). :contentReference[oaicite:2]{index=2}
+""")
 
-    # Sidebar to navigate between different sections
-    with st.sidebar:
-        st.header("Navigation")
-        option = st.radio("Choose an Option", ["Home", "Ask Question", "Previous Results"])
+# Input section
+query = st.text_area("🔍 Enter your question:")
 
-    # Ask Question page
-    if option == "Ask Question":
-        ask_question_page()
-
-    # Display Previous Queries page
-    elif option == "Previous Results":
-        display_previous_queries()
-
-# Page for asking questions
-def ask_question_page():
-    st.header("Ask Your Genomics/Proteomics Question")
-
-    # User input field for query
-    user_input = st.text_area("Enter your analysis query:")
-
-    if st.button("Submit Query"):
-        if user_input:
-            st.write("Processing your query... Please wait.")
-            response = get_chatgpt_response(user_input)
-            st.write("ChatGPT Response:")
-            st.write(response)
-
-            # Save the query and response
-            save_previous_query(user_input, response)
-        else:
-            st.error("Please enter a valid query.")
-
-# Save the question and response in session state
-def save_previous_query(query, response):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state.previous_queries.append({"query": query, "response": response, "timestamp": timestamp})
-
-# Display Previous Queries
-def display_previous_queries():
-    st.header("Previous Search Results")
-    if len(st.session_state.previous_queries) > 0:
-        for idx, query_data in enumerate(st.session_state.previous_queries):
-            st.markdown(f"### {idx + 1}. Query ({query_data['timestamp']})")
-            st.write(f"**Question:** {query_data['query']}")
-            st.write(f"**Answer:** {query_data['response']}")
+if st.button("Submit"):
+    if query.strip() == "":
+        st.error("❗ Please type a valid query first.")
     else:
-        st.write("No previous results found. Ask a question to get started!")
+        st.info("⏳ Getting results...")
+        answer = ask_gpt(query)
+        st.session_state.setdefault("history", []).append({
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "query": query,
+            "answer": answer,
+        })
+        st.success("✅ Analysis complete!")
 
-if __name__ == "__main__":
-    main()
+# Display last answer and history
+if "history" in st.session_state and st.session_state["history"]:
+    st.markdown("---")
+    st.subheader("📜 Previous Results")
+
+    for item in reversed(st.session_state["history"]):
+        st.markdown(f"<div class='query-box'><b>{item['time']}</b><br><i>Q:</i> {item['query']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='answer-box'><b>A:</b> {item['answer']}</div>", unsafe_allow_html=True)
