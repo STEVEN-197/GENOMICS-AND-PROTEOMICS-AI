@@ -9,7 +9,7 @@ except:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAfW4fmMD366Q-sAO_G2OzwAhXBx0Rcq14")
 
 # Latest Gemini 3 model (February 2026) - Released Nov 2025
-MODEL = "gemini-3-flash"  # ✅ LATEST & FASTEST!
+MODEL = "gemini-3-flash-preview"  # ✅ LATEST & FASTEST!
 
 USERS = {
     "admin": "admin123",
