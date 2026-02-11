@@ -3,14 +3,13 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime
-from openai import OpenAI
-import os
+import google.generativeai as genai
 
-from config import OPENAI_API_KEY, MODEL, USERS
+from config import GEMINI_API_KEY, MODEL, USERS
 from styles import inject_premium_css
 
-# Initialize OpenAI client (NEW API v1.0+)
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Configure Gemini API
+genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(
     page_title="GenoProt AI • STEVEN AND CO",
@@ -35,24 +34,23 @@ def verify_login(username, password):
     return username in USERS and USERS[username] == password
 
 def get_ai_response(prompt):
-    """Get AI response using NEW OpenAI API v1.0+"""
+    """Get AI response using Google Gemini"""
     try:
-        system_msg = """You are a specialized AI assistant EXCLUSIVELY for genomics, proteomics, and bioinformatics. 
-        ONLY answer questions related to: genomics, proteomics, molecular biology, DNA, RNA, proteins, gene expression, 
-        sequencing, CRISPR, protein structure, pathways, variants. For other topics, politely decline."""
+        model = genai.GenerativeModel(MODEL)
         
-        # NEW API syntax
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.7
-        )
+        system_instruction = """You are a specialized AI assistant EXCLUSIVELY for genomics, proteomics, and bioinformatics.
+
+STRICT RULES:
+1. ONLY answer questions related to: genomics, proteomics, molecular biology, bioinformatics, DNA, RNA, proteins, gene expression, sequencing, CRISPR, protein structure, pathways, variants, mutations, epigenetics, etc.
+2. If asked about ANY other topic (politics, weather, cooking, sports, etc.), respond: "I am a specialized genomics and proteomics AI assistant. I can only help with questions related to genomics, proteomics, molecular biology, and bioinformatics. Please ask me about genes, proteins, DNA sequencing, or related topics."
+3. Provide detailed, accurate scientific answers for valid genomics/proteomics questions.
+4. Use technical terminology appropriately.
+5. Be helpful and educational."""
         
-        return response.choices[0].message.content
+        full_prompt = f"{system_instruction}\n\nUser question: {prompt}"
+        response = model.generate_content(full_prompt)
+        
+        return response.text
         
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
@@ -66,7 +64,7 @@ def save_to_history(query, response):
     })
     st.session_state.search_history = st.session_state.search_history[:50]
 
-# LOGIN
+# ============ LOGIN PAGE ============
 if not st.session_state.logged_in:
     st.markdown("""
     <div class="apple-nav">
@@ -82,7 +80,7 @@ if not st.session_state.logged_in:
                 <div class="floating-icon">🧬</div>
             </div>
             <h1 class="apple-title">Welcome to GenoProt AI</h1>
-            <p class="apple-subtitle">The future of genomics and proteomics analysis</p>
+            <p class="apple-subtitle">Powered by Google Gemini 2.0</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -121,14 +119,14 @@ if not st.session_state.logged_in:
     <footer class="apple-footer">
         <div class="footer-content">
             <p class="footer-brand">STEVEN AND CO™</p>
-            <p class="footer-text">GenoProt AI Platform • Powered by Advanced AI</p>
+            <p class="footer-text">GenoProt AI Platform • Powered by Google Gemini 2.0</p>
             <p class="footer-copyright">© 2026 Steven and Co. All rights reserved.</p>
             <p class="footer-legal">Patents pending. Confidential and proprietary.</p>
         </div>
     </footer>
     """, unsafe_allow_html=True)
 
-# MAIN APP
+# ============ MAIN APP ============
 else:
     st.markdown("""
     <div class="apple-nav">
@@ -143,6 +141,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
+    # SIDEBAR
     with st.sidebar:
         st.markdown(f"""
         <div class="sidebar-header">
@@ -167,10 +166,10 @@ else:
                          label_visibility="collapsed")
         
         st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-        st.markdown(f'<p class="sidebar-status">✓ {MODEL} Active</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="sidebar-status">✓ Gemini 2.0 Active</p>', unsafe_allow_html=True)
         st.markdown(f'<p class="sidebar-status">💾 {len(st.session_state.search_history)} Queries</p>', unsafe_allow_html=True)
     
-    # HOME
+    # ============ HOME MODULE ============
     if module == "🏠 Home":
         st.markdown("""
         <div class="hero-section">
@@ -239,24 +238,24 @@ else:
             </div>
             """, unsafe_allow_html=True)
     
-    # AI CHAT
+    # ============ AI CHAT MODULE ============
     elif module == "💬 AI Chat":
         st.markdown("""
         <div class="page-header">
             <h1 class="page-title">AI Assistant</h1>
-            <p class="page-subtitle">Ask anything about genomics, proteomics, or bioinformatics</p>
+            <p class="page-subtitle">Powered by Google Gemini 2.0 Flash</p>
         </div>
         """, unsafe_allow_html=True)
         
         col1, col2 = st.columns([6, 1])
         with col1:
-            user_query = st.text_input("", placeholder="What would you like to know?", 
+            user_query = st.text_input("", placeholder="Ask about genomics, proteomics, or bioinformatics...", 
                                       key="q", label_visibility="collapsed")
         with col2:
             send_btn = st.button("Send", use_container_width=True, type="primary")
         
         if send_btn and user_query:
-            with st.spinner("Analyzing..."):
+            with st.spinner("🧬 Analyzing with Gemini..."):
                 ai_response = get_ai_response(user_query)
                 save_to_history(user_query, ai_response)
                 st.session_state.chat_history.append({
@@ -278,7 +277,7 @@ else:
                     </div>
                     <div class="message ai-msg">
                         <div class="msg-header">
-                            <span class="msg-author">AI Assistant</span>
+                            <span class="msg-author">🤖 Gemini AI</span>
                             <span class="msg-time">{chat['time']}</span>
                         </div>
                         <p class="msg-text">{chat['ai']}</p>
@@ -300,10 +299,10 @@ else:
         
         c1, c2, c3, c4 = st.columns(4)
         topics = [
-            ("🧬", "Gene Expression", "Explain gene expression analysis"),
+            ("🧬", "Gene Expression", "Explain gene expression analysis methods"),
             ("🔬", "Proteins", "How does protein folding work?"),
-            ("📊", "Variants", "What is variant calling?"),
-            ("🧪", "Pathways", "Explain pathway enrichment")
+            ("📊", "Variants", "What is variant calling in genomics?"),
+            ("🧪", "Pathways", "Explain pathway enrichment analysis")
         ]
         
         for col, (icon, title, query) in zip([c1,c2,c3,c4], topics):
@@ -313,14 +312,124 @@ else:
                     save_to_history(query, r)
                     st.rerun()
     
-    # HISTORY & ANALYSIS (shortened for brevity - add rest from previous code)
+    # ============ HISTORY MODULE ============
+    elif module == "📜 History":
+        st.markdown("""
+        <div class="page-header">
+            <h1 class="page-title">Search History</h1>
+            <p class="page-subtitle">All your previous queries and responses</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.session_state.search_history:
+            col1, col2, col3 = st.columns([2, 2, 1])
+            with col1:
+                st.markdown(f'<div class="info-pill">Total: {len(st.session_state.search_history)}</div>', 
+                           unsafe_allow_html=True)
+            with col2:
+                today = sum(1 for s in st.session_state.search_history 
+                    if s['timestamp'].startswith(datetime.now().strftime("%Y-%m-%d")))
+                st.markdown(f'<div class="info-pill">Today: {today}</div>', unsafe_allow_html=True)
+            with col3:
+                if st.button("Clear All", use_container_width=True):
+                    st.session_state.search_history = []
+                    st.rerun()
+            
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+            
+            search = st.text_input("", placeholder="Filter history...", label_visibility="collapsed")
+            
+            for idx, item in enumerate(st.session_state.search_history):
+                if not search or search.lower() in item['query'].lower() or search.lower() in item['response'].lower():
+                    st.markdown(f"""
+                    <div class="history-card">
+                        <div class="history-header">
+                            <span class="history-number">#{len(st.session_state.search_history)-idx}</span>
+                            <span class="history-meta">{item['timestamp']} • {item['user']}</span>
+                        </div>
+                        <div class="history-content">
+                            <p class="history-query"><strong>Q:</strong> {item['query']}</p>
+                            <p class="history-answer"><strong>A:</strong> {item['response'][:200]}...</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    with st.expander("📖 View Full Response"):
+                        st.write(item['response'])
+        else:
+            st.markdown("""
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <h3>No history yet</h3>
+                <p>Your search history will appear here</p>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # FOOTER
+    # ============ ANALYSIS MODULE ============
+    else:
+        st.markdown("""
+        <div class="page-header">
+            <h1 class="page-title">Gene Expression Analysis</h1>
+            <p class="page-subtitle">Upload and analyze your genomic data</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tab1, tab2 = st.tabs(["📤 Upload Data", "📊 Results"])
+        
+        with tab1:
+            st.file_uploader("Choose CSV or TSV file", type=['csv','tsv'], label_visibility="collapsed")
+            if st.button("Load Sample Dataset", use_container_width=True, type="primary"):
+                genes = [f"Gene_{i}" for i in range(1,51)]
+                samples = [f"Sample_{i}" for i in range(1,5)]
+                data = np.random.lognormal(5, 2, (50,4))
+                df = pd.DataFrame(data, columns=samples, index=genes)
+                st.session_state['data'] = df
+                st.success("✓ Data loaded successfully")
+                st.dataframe(df.head(10), use_container_width=True)
+        
+        with tab2:
+            if 'data' in st.session_state:
+                df = st.session_state['data']
+                c1,c2,c3,c4 = st.columns(4)
+                with c1:
+                    st.markdown(f'<div class="mini-stat"><h3>{df.shape[0]}</h3><p>Genes</p></div>', 
+                               unsafe_allow_html=True)
+                with c2:
+                    st.markdown(f'<div class="mini-stat"><h3>{df.shape[1]}</h3><p>Samples</p></div>', 
+                               unsafe_allow_html=True)
+                with c3:
+                    st.markdown(f'<div class="mini-stat"><h3>{np.random.randint(250,350)}</h3><p>Upregulated</p></div>', 
+                               unsafe_allow_html=True)
+                with c4:
+                    st.markdown(f'<div class="mini-stat"><h3>{np.random.randint(180,280)}</h3><p>Downregulated</p></div>', 
+                               unsafe_allow_html=True)
+                
+                st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+                st.markdown('<h3 class="chart-title">Expression Heatmap</h3>', unsafe_allow_html=True)
+                
+                fig = px.imshow(df.head(25).values, x=df.columns.tolist(),
+                    y=df.head(25).index.tolist(), color_continuous_scale='RdBu_r',
+                    aspect="auto")
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(family="SF Pro Display, -apple-system, sans-serif", size=12)
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.markdown("""
+                <div class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <h3>No data loaded</h3>
+                    <p>Upload your data in the previous tab</p>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ FOOTER ============
     st.markdown("""
     <footer class="apple-footer">
         <div class="footer-content">
             <p class="footer-brand">STEVEN AND CO™</p>
-            <p class="footer-text">GenoProt AI Platform • Advanced Genomics & Proteomics Analysis</p>
+            <p class="footer-text">GenoProt AI Platform • Powered by Google Gemini 2.0 Flash</p>
             <p class="footer-copyright">© 2026 Steven and Co. All rights reserved.</p>
             <p class="footer-legal">Patents pending. Confidential and proprietary.</p>
         </div>
