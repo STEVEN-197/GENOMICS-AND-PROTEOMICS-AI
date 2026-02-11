@@ -4,6 +4,7 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime
 import google.generativeai as genai
+import re
 
 from config import GEMINI_API_KEY, MODEL, USERS
 from styles import inject_premium_css
@@ -33,6 +34,42 @@ if 'search_history' not in st.session_state:
 def verify_login(username, password):
     return username in USERS and USERS[username] == password
 
+def highlight_scientific_terms(text):
+    """Automatically highlight important scientific terms with colors"""
+    
+    # Define terms to highlight with their colors
+    highlights = {
+        # DNA/RNA terms - Blue
+        r'\b(DNA|RNA|mRNA|tRNA|rRNA|genome|chromosome|nucleotide|base pair|sequence)\b': 
+            '<span style="background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #1e40af;">\\1</span>',
+        
+        # Protein terms - Purple
+        r'\b(protein|peptide|amino acid|enzyme|antibody|lysozyme|catalytic|domain|folding|structure)\b': 
+            '<span style="background: linear-gradient(120deg, #d4a5f9 0%, #e8d5ff 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #6b21a8;">\\1</span>',
+        
+        # Gene terms - Green
+        r'\b(gene|allele|locus|expression|transcription|translation|promoter|enhancer|mutation)\b': 
+            '<span style="background: linear-gradient(120deg, #a7f3d0 0%, #d1fae5 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #065f46;">\\1</span>',
+        
+        # Techniques - Orange
+        r'\b(CRISPR|PCR|sequencing|RNA-seq|BLAST|cloning|gel electrophoresis|Western blot|qPCR)\b': 
+            '<span style="background: linear-gradient(120deg, #fed7aa 0%, #ffedd5 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #9a3412;">\\1</span>',
+        
+        # Analysis terms - Pink
+        r'\b(bioinformatics|alignment|homology|phylogenetic|annotation|pathway|enrichment|variant calling)\b': 
+            '<span style="background: linear-gradient(120deg, #fecaca 0%, #fee2e2 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #991b1b;">\\1</span>',
+        
+        # Organisms - Teal
+        r'\b(E\. coli|Saccharomyces|Drosophila|C\. elegans|Arabidopsis|mouse|human|bacteria)\b': 
+            '<span style="background: linear-gradient(120deg, #99f6e4 0%, #ccfbf1 100%); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #115e59;">\\1</span>',
+    }
+    
+    # Apply highlights (case insensitive)
+    for pattern, replacement in highlights.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    return text
+
 def get_ai_response(prompt):
     """Get AI response using Google Gemini"""
     try:
@@ -42,10 +79,10 @@ def get_ai_response(prompt):
 
 STRICT RULES:
 1. ONLY answer questions related to: genomics, proteomics, molecular biology, bioinformatics, DNA, RNA, proteins, gene expression, sequencing, CRISPR, protein structure, pathways, variants, mutations, epigenetics, etc.
-2. If asked about ANY other topic (politics, weather, cooking, sports, etc.), respond: "I am a specialized genomics and proteomics AI assistant. I can only help with questions related to genomics, proteomics, molecular biology, and bioinformatics. Please ask me about genes, proteins, DNA sequencing, or related topics."
-3. Provide detailed, accurate scientific answers for valid genomics/proteomics questions.
-4. Use technical terminology appropriately.
-5. Be helpful and educational."""
+2. If asked about ANY other topic, respond: "I am a specialized genomics and proteomics AI assistant. I can only help with questions related to genomics, proteomics, molecular biology, and bioinformatics."
+3. Provide detailed, accurate scientific answers.
+4. Use proper markdown formatting with headers (##), bold (**), and bullet points.
+5. Organize complex answers with clear sections."""
         
         full_prompt = f"{system_instruction}\n\nUser question: {prompt}"
         response = model.generate_content(full_prompt)
@@ -80,7 +117,7 @@ if not st.session_state.logged_in:
                 <div class="floating-icon">🧬</div>
             </div>
             <h1 class="apple-title">Welcome to GenoProt AI</h1>
-            <p class="apple-subtitle">Powered by Google Gemini 2.0</p>
+            <p class="apple-subtitle">Powered by Google Gemini 3.0</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -119,7 +156,7 @@ if not st.session_state.logged_in:
     <footer class="apple-footer">
         <div class="footer-content">
             <p class="footer-brand">STEVEN AND CO™</p>
-            <p class="footer-text">GenoProt AI Platform • Powered by Google Gemini 2.0</p>
+            <p class="footer-text">GenoProt AI Platform • Powered by Google Gemini 3.0</p>
             <p class="footer-copyright">© 2026 Steven and Co. All rights reserved.</p>
             <p class="footer-legal">Patents pending. Confidential and proprietary.</p>
         </div>
@@ -166,7 +203,7 @@ else:
                          label_visibility="collapsed")
         
         st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-        st.markdown(f'<p class="sidebar-status">✓ Gemini 2.0 Active</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="sidebar-status">✓ Gemini 3.0 Active</p>', unsafe_allow_html=True)
         st.markdown(f'<p class="sidebar-status">💾 {len(st.session_state.search_history)} Queries</p>', unsafe_allow_html=True)
     
     # ============ HOME MODULE ============
@@ -174,7 +211,7 @@ else:
         st.markdown("""
         <div class="hero-section">
             <h1 class="hero-title">Genomics. Proteomics. Perfected.</h1>
-            <p class="hero-subtitle">AI-powered analysis at the speed of thought</p>
+            <p class="hero-subtitle">AI-powered analysis with smart highlighting</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -232,18 +269,33 @@ else:
         with c3:
             st.markdown("""
             <div class="feature-card">
-                <div class="feature-icon-large">🤖</div>
-                <h3 class="feature-title">AI Insights</h3>
-                <p class="feature-desc">Intelligent pathway enrichment and variant analysis</p>
+                <div class="feature-icon-large">🎨</div>
+                <h3 class="feature-title">Smart Highlighting</h3>
+                <p class="feature-desc">Automatic color-coded highlighting of scientific terms</p>
             </div>
             """, unsafe_allow_html=True)
     
-    # ============ AI CHAT MODULE ============
+    # ============ AI CHAT MODULE WITH HIGHLIGHTING ============
     elif module == "💬 AI Chat":
         st.markdown("""
         <div class="page-header">
             <h1 class="page-title">AI Assistant</h1>
-            <p class="page-subtitle">Powered by Google Gemini 2.0 Flash</p>
+            <p class="page-subtitle">Powered by Gemini 3.0 • Smart Highlighting Enabled</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Color legend
+        st.markdown("""
+        <div style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #e5e7eb;">
+            <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">🎨 Auto-Highlighting Legend:</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <span style="background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #1e40af;">DNA/RNA</span>
+                <span style="background: linear-gradient(120deg, #d4a5f9 0%, #e8d5ff 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #6b21a8;">Proteins</span>
+                <span style="background: linear-gradient(120deg, #a7f3d0 0%, #d1fae5 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #065f46;">Genes</span>
+                <span style="background: linear-gradient(120deg, #fed7aa 0%, #ffedd5 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #9a3412;">Techniques</span>
+                <span style="background: linear-gradient(120deg, #fecaca 0%, #fee2e2 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #991b1b;">Analysis</span>
+                <span style="background: linear-gradient(120deg, #99f6e4 0%, #ccfbf1 100%); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; color: #115e59;">Organisms</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -263,36 +315,52 @@ else:
                     'time': datetime.now().strftime("%H:%M")
                 })
         
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        # Display chat with highlighting
         if st.session_state.chat_history:
-            for chat in reversed(st.session_state.chat_history[-8:]):
+            for idx, chat in enumerate(reversed(st.session_state.chat_history[-8:])):
+                # User message
                 st.markdown(f"""
-                <div class="message-group">
-                    <div class="message user-msg">
-                        <div class="msg-header">
-                            <span class="msg-author">{st.session_state.username}</span>
-                            <span class="msg-time">{chat['time']}</span>
-                        </div>
-                        <p class="msg-text">{chat['user']}</p>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                     color: white; padding: 1.2rem 1.5rem; border-radius: 15px 15px 5px 15px; 
+                     margin: 1rem 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>👤 {st.session_state.username}</strong> 
+                        <span style="font-size:0.85rem; opacity:0.9; margin-left: 0.5rem;">{chat['time']}</span>
                     </div>
-                    <div class="message ai-msg">
-                        <div class="msg-header">
-                            <span class="msg-author">🤖 Gemini AI</span>
-                            <span class="msg-time">{chat['time']}</span>
-                        </div>
-                        <p class="msg-text">{chat['ai']}</p>
-                    </div>
+                    <div style="line-height: 1.6;">{chat['user']}</div>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # AI message with smart highlighting
+                st.markdown(f"""
+                <div style="background: white; padding: 1.2rem 1.5rem; border-radius: 15px 15px 15px 5px; 
+                     margin: 1rem 0; border-left: 5px solid #667eea; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                    <div style="margin-bottom: 0.8rem;">
+                        <strong style="color: #667eea;">🤖 Gemini AI</strong> 
+                        <span style="font-size:0.85rem; color:#6b7280; margin-left: 0.5rem;">{chat['time']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Apply highlighting and render
+                highlighted_response = highlight_scientific_terms(chat['ai'])
+                st.markdown(highlighted_response, unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+                # Divider between conversations
+                if idx < len(st.session_state.chat_history) - 1:
+                    st.markdown('<hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">', unsafe_allow_html=True)
         else:
             st.markdown("""
             <div class="empty-state">
                 <div class="empty-icon">💬</div>
                 <h3>Start a conversation</h3>
                 <p>Ask me about genomics, proteomics, or molecular biology</p>
+                <p style="font-size: 0.9rem; color: #6b7280; margin-top: 1rem;">
+                    ✨ Important terms will be automatically highlighted in color!
+                </p>
             </div>
             """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         st.markdown('<p class="quick-label">Quick Topics</p>', unsafe_allow_html=True)
@@ -300,9 +368,9 @@ else:
         c1, c2, c3, c4 = st.columns(4)
         topics = [
             ("🧬", "Gene Expression", "Explain gene expression analysis methods"),
-            ("🔬", "Proteins", "How does protein folding work?"),
+            ("🔬", "Lysozyme", "What is lysozyme and its biological function?"),
             ("📊", "Variants", "What is variant calling in genomics?"),
-            ("🧪", "Pathways", "Explain pathway enrichment analysis")
+            ("🧪", "CRISPR", "Explain CRISPR-Cas9 mechanism")
         ]
         
         for col, (icon, title, query) in zip([c1,c2,c3,c4], topics):
@@ -317,52 +385,34 @@ else:
         st.markdown("""
         <div class="page-header">
             <h1 class="page-title">Search History</h1>
-            <p class="page-subtitle">All your previous queries and responses</p>
+            <p class="page-subtitle">All your previous queries</p>
         </div>
         """, unsafe_allow_html=True)
         
         if st.session_state.search_history:
-            col1, col2, col3 = st.columns([2, 2, 1])
+            col1, col2, col3 = st.columns(3)
             with col1:
-                st.markdown(f'<div class="info-pill">Total: {len(st.session_state.search_history)}</div>', 
-                           unsafe_allow_html=True)
+                st.metric("Total", len(st.session_state.search_history))
             with col2:
                 today = sum(1 for s in st.session_state.search_history 
                     if s['timestamp'].startswith(datetime.now().strftime("%Y-%m-%d")))
-                st.markdown(f'<div class="info-pill">Today: {today}</div>', unsafe_allow_html=True)
+                st.metric("Today", today)
             with col3:
-                if st.button("Clear All", use_container_width=True):
+                if st.button("🗑️ Clear All"):
                     st.session_state.search_history = []
+                    st.session_state.chat_history = []
                     st.rerun()
             
-            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+            st.markdown("---")
             
-            search = st.text_input("", placeholder="Filter history...", label_visibility="collapsed")
-            
-            for idx, item in enumerate(st.session_state.search_history):
-                if not search or search.lower() in item['query'].lower() or search.lower() in item['response'].lower():
-                    st.markdown(f"""
-                    <div class="history-card">
-                        <div class="history-header">
-                            <span class="history-number">#{len(st.session_state.search_history)-idx}</span>
-                            <span class="history-meta">{item['timestamp']} • {item['user']}</span>
-                        </div>
-                        <div class="history-content">
-                            <p class="history-query"><strong>Q:</strong> {item['query']}</p>
-                            <p class="history-answer"><strong>A:</strong> {item['response'][:200]}...</p>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    with st.expander("📖 View Full Response"):
-                        st.write(item['response'])
+            for idx, item in enumerate(st.session_state.search_history[:20]):
+                with st.expander(f"**Query #{idx+1}** · {item['timestamp']} · {item['user']}"):
+                    st.markdown(f"**Question:** {item['query']}")
+                    st.markdown("**Answer:**")
+                    highlighted = highlight_scientific_terms(item['response'])
+                    st.markdown(highlighted, unsafe_allow_html=True)
         else:
-            st.markdown("""
-            <div class="empty-state">
-                <div class="empty-icon">📭</div>
-                <h3>No history yet</h3>
-                <p>Your search history will appear here</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.info("No history yet. Start chatting to build your history!")
     
     # ============ ANALYSIS MODULE ============
     else:
@@ -376,60 +426,40 @@ else:
         tab1, tab2 = st.tabs(["📤 Upload Data", "📊 Results"])
         
         with tab1:
-            st.file_uploader("Choose CSV or TSV file", type=['csv','tsv'], label_visibility="collapsed")
-            if st.button("Load Sample Dataset", use_container_width=True, type="primary"):
+            st.file_uploader("Choose CSV or TSV file", type=['csv','tsv'])
+            if st.button("Load Sample Dataset", type="primary"):
                 genes = [f"Gene_{i}" for i in range(1,51)]
                 samples = [f"Sample_{i}" for i in range(1,5)]
                 data = np.random.lognormal(5, 2, (50,4))
                 df = pd.DataFrame(data, columns=samples, index=genes)
                 st.session_state['data'] = df
-                st.success("✓ Data loaded successfully")
-                st.dataframe(df.head(10), use_container_width=True)
+                st.success("✓ Data loaded!")
+                st.dataframe(df.head(10))
         
         with tab2:
             if 'data' in st.session_state:
                 df = st.session_state['data']
                 c1,c2,c3,c4 = st.columns(4)
-                with c1:
-                    st.markdown(f'<div class="mini-stat"><h3>{df.shape[0]}</h3><p>Genes</p></div>', 
-                               unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f'<div class="mini-stat"><h3>{df.shape[1]}</h3><p>Samples</p></div>', 
-                               unsafe_allow_html=True)
-                with c3:
-                    st.markdown(f'<div class="mini-stat"><h3>{np.random.randint(250,350)}</h3><p>Upregulated</p></div>', 
-                               unsafe_allow_html=True)
-                with c4:
-                    st.markdown(f'<div class="mini-stat"><h3>{np.random.randint(180,280)}</h3><p>Downregulated</p></div>', 
-                               unsafe_allow_html=True)
+                with c1: st.metric("Genes", df.shape[0])
+                with c2: st.metric("Samples", df.shape[1])
+                with c3: st.metric("Upregulated", np.random.randint(250,350))
+                with c4: st.metric("Downregulated", np.random.randint(180,280))
                 
-                st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-                st.markdown('<h3 class="chart-title">Expression Heatmap</h3>', unsafe_allow_html=True)
+                st.markdown("---")
+                st.markdown("### Expression Heatmap")
                 
                 fig = px.imshow(df.head(25).values, x=df.columns.tolist(),
-                    y=df.head(25).index.tolist(), color_continuous_scale='RdBu_r',
-                    aspect="auto")
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family="SF Pro Display, -apple-system, sans-serif", size=12)
-                )
+                    y=df.head(25).index.tolist(), color_continuous_scale='RdBu_r')
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.markdown("""
-                <div class="empty-state">
-                    <div class="empty-icon">📊</div>
-                    <h3>No data loaded</h3>
-                    <p>Upload your data in the previous tab</p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info("Upload data in the previous tab")
     
-    # ============ FOOTER ============
+    # FOOTER
     st.markdown("""
     <footer class="apple-footer">
         <div class="footer-content">
             <p class="footer-brand">STEVEN AND CO™</p>
-            <p class="footer-text">GenoProt AI Platform • Powered by Google Gemini 2.0 Flash</p>
+            <p class="footer-text">GenoProt AI • Powered by Google Gemini 3.0 Flash</p>
             <p class="footer-copyright">© 2026 Steven and Co. All rights reserved.</p>
             <p class="footer-legal">Patents pending. Confidential and proprietary.</p>
         </div>
