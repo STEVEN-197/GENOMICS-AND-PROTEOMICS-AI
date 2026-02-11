@@ -8,8 +8,8 @@ try:
 except:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAfW4fmMD366Q-sAO_G2OzwAhXBx0Rcq14")
 
-# Latest Gemini model (February 2026)
-MODEL = "gemini-2.0-flash-exp"
+# Latest Gemini 3 model (February 2026) - Released Nov 2025
+MODEL = "gemini-3-flash"  # ✅ LATEST & FASTEST!
 
 USERS = {
     "admin": "admin123",
